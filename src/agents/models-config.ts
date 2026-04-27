@@ -53,17 +53,20 @@ async function buildModelsJsonFingerprint(params: {
   const authProfilesMtimeMs = await readFileMtimeMs(
     path.join(params.agentDir, "auth-profiles.json"),
   );
-  const modelsFileMtimeMs = await readFileMtimeMs(path.join(params.agentDir, "models.json"));
   const envShape = createConfigRuntimeEnv(params.config, {});
   const pluginMetadataSnapshotIndexFingerprint = params.pluginMetadataSnapshot
     ? resolveInstalledManifestRegistryIndexFingerprint(params.pluginMetadataSnapshot.index)
     : undefined;
+  // Note: modelsFileMtimeMs is intentionally excluded. Including it caused a
+  // cache invalidation bug: after planOpenClawModelsJson writes models.json,
+  // the stored fingerprint (computed pre-write) no longer matches the new mtime,
+  // forcing every subsequent caller to re-run planOpenClawModelsJson. The content
+  // comparison inside planOpenClawModelsJson already handles external changes.
   return stableStringify({
     config: params.config,
     sourceConfigForSecrets: params.sourceConfigForSecrets,
     envShape,
     authProfilesMtimeMs,
-    modelsFileMtimeMs,
     workspaceDir: params.workspaceDir,
     pluginMetadataSnapshotIndexFingerprint,
     providerDiscoveryProviderIds: params.providerDiscoveryProviderIds,
@@ -175,6 +178,24 @@ export async function ensureOpenClawModelsJson(
     });
   const agentDir = agentDirOverride?.trim() ? agentDirOverride.trim() : resolveOpenClawAgentDir();
   const targetPath = path.join(agentDir, "models.json");
+
+  // Fast path: if models.json has not changed since the last noop result, return
+  // immediately. This is safe because a noop result means the generated content
+  // already matches what is on disk, so no caller's config variant can produce
+  // a different outcome. Keying by mtime rather than fingerprint avoids repeated
+  // planOpenClawModelsJson runs when agents with different configs (e.g. main
+  // agent vs active-memory subagent) call this function concurrently.
+  const currentMtime = await readFileMtimeMs(targetPath);
+  const noopCached = MODELS_JSON_STATE.noopCache.get(targetPath);
+  // Only use the noop cache when the file exists (mtime !== null). A null mtime
+  // means models.json was absent; caching null would match any future absent-file
+  // state even if the environment changed (e.g. an API key was added), preventing
+  // regeneration until the next mtime change.
+  if (noopCached && currentMtime !== null && noopCached.mtime === currentMtime) {
+    await ensureModelsFileModeForModelsJson(targetPath);
+    return noopCached.result;
+  }
+
   const fingerprint = await buildModelsJsonFingerprint({
     config: cfg,
     sourceConfigForSecrets: resolved.sourceConfigForSecrets,
@@ -236,6 +257,19 @@ export async function ensureOpenClawModelsJson(
   MODELS_JSON_STATE.readyCache.set(targetPath, pending);
   try {
     const settled = await pending;
+    // Populate the noop cache so subsequent callers with different configs can
+    // skip planOpenClawModelsJson as long as models.json has not changed.
+    if (!settled.result.wrote) {
+      const newMtime = await readFileMtimeMs(targetPath);
+      // Only cache when models.json exists (mtime !== null) to avoid matching
+      // future absent-file states where the environment may have changed.
+      if (newMtime !== null) {
+        MODELS_JSON_STATE.noopCache.set(targetPath, { mtime: newMtime, result: settled.result });
+      }
+    } else {
+      // A write occurred — invalidate the noop cache so the new mtime is picked up.
+      MODELS_JSON_STATE.noopCache.delete(targetPath);
+    }
     return settled.result;
   } catch (error) {
     if (MODELS_JSON_STATE.readyCache.get(targetPath) === pending) {

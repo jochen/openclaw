@@ -580,7 +580,37 @@ function applyConfiguredProviderOverrides(params: {
     providerRequest,
   );
 }
-function resolveExplicitModelWithRegistry(params: {
+/**
+ * Process-lifetime cache for resolveExplicitModelWithRegistry results.
+ *
+ * resolveExplicitModelWithRegistry calls shouldSuppressBuiltInModel which
+ * internally invokes resolveProviderPluginsForCatalogHooks → resolvePluginProviders.
+ * On ARM64 devices (e.g. Raspberry Pi), that initial provider-plugin load takes
+ * ~20s. On subsequent calls the provider runtime has an internal cache, but its
+ * key includes the full config, so agents with slightly different configs (e.g.
+ * a main agent vs an active-memory subagent that received a modified config via
+ * applyActiveMemoryRuntimeConfigSnapshot) each pay the 20s cost independently.
+ *
+ * This cache avoids repeated resolution for the same (provider, modelId, agentDir)
+ * triple. The result is stable within a gateway session: model definitions come
+ * from openclaw.json (inline providers) or from models.json (discovered providers),
+ * neither of which changes without a gateway restart.
+ */
+const _explicitModelCache = new Map<
+  string,
+  { kind: "resolved"; model: Model<Api> } | { kind: "suppressed" } | undefined
+>();
+
+function _explicitModelCacheKey(provider: string, modelId: string, agentDir?: string): string {
+  return `${provider}\0${modelId}\0${agentDir ?? ""}`;
+}
+
+/** Clear the explicit model cache. Call when models.json is known to have changed. */
+export function resetExplicitModelCacheForTest(): void {
+  _explicitModelCache.clear();
+}
+
+function _resolveExplicitModelWithRegistryUncached(params: {
   provider: string;
   modelId: string;
   modelRegistry: ModelRegistry;
@@ -680,6 +710,23 @@ function resolveExplicitModelWithRegistry(params: {
   }
 
   return undefined;
+}
+
+function resolveExplicitModelWithRegistry(params: {
+  provider: string;
+  modelId: string;
+  modelRegistry: ModelRegistry;
+  cfg?: OpenClawConfig;
+  agentDir?: string;
+  runtimeHooks?: ProviderRuntimeHooks;
+}): { kind: "resolved"; model: Model<Api> } | { kind: "suppressed" } | undefined {
+  const cacheKey = _explicitModelCacheKey(params.provider, params.modelId, params.agentDir);
+  if (_explicitModelCache.has(cacheKey)) {
+    return _explicitModelCache.get(cacheKey);
+  }
+  const result = _resolveExplicitModelWithRegistryUncached(params);
+  _explicitModelCache.set(cacheKey, result);
+  return result;
 }
 
 function resolvePluginDynamicModelWithRegistry(params: {
