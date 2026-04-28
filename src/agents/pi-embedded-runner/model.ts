@@ -601,8 +601,21 @@ const _explicitModelCache = new Map<
   { kind: "resolved"; model: Model<Api> } | { kind: "suppressed" } | undefined
 >();
 
-function _explicitModelCacheKey(provider: string, modelId: string, agentDir?: string): string {
-  return `${provider}\0${modelId}\0${agentDir ?? ""}`;
+function _explicitModelCacheKey(
+  provider: string,
+  modelId: string,
+  agentDir?: string,
+  cfg?: OpenClawConfig,
+): string {
+  // Include a stable fingerprint of the config fields that affect the result:
+  // cfg.models.providers (inline model definitions and overrides) and
+  // cfg.models.mode. Suppression checks use provider plugins (not config),
+  // so only the provider-config section matters for correctness here.
+  // We use JSON.stringify with sorted keys for determinism.
+  const providersCfgKey = cfg?.models?.providers
+    ? JSON.stringify(cfg.models.providers, Object.keys(cfg.models.providers).sort())
+    : "";
+  return `${provider}\0${modelId}\0${agentDir ?? ""}\0${providersCfgKey}`;
 }
 
 /** Clear the explicit model cache. Call when models.json is known to have changed. */
@@ -720,7 +733,12 @@ function resolveExplicitModelWithRegistry(params: {
   agentDir?: string;
   runtimeHooks?: ProviderRuntimeHooks;
 }): { kind: "resolved"; model: Model<Api> } | { kind: "suppressed" } | undefined {
-  const cacheKey = _explicitModelCacheKey(params.provider, params.modelId, params.agentDir);
+  const cacheKey = _explicitModelCacheKey(
+    params.provider,
+    params.modelId,
+    params.agentDir,
+    params.cfg,
+  );
   if (_explicitModelCache.has(cacheKey)) {
     return _explicitModelCache.get(cacheKey);
   }
