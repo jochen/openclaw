@@ -91,6 +91,22 @@ describe("active-memory escalation", () => {
     "Vous vous rappelez de Gauthier ?",
     "Tu te souviens d'Olivier ?",
     "Tu te souviens d'envoyer le rapport ?",
+    "Weißt du noch, was wir letzte Woche besprochen haben?",
+    "Weisst du noch, wie das Restaurant hieß?",
+    "Erinnerst du dich an das Rezept von neulich?",
+    "Was haben wir gestern entschieden?",
+    "Was hatten wir letztes Mal ausgemacht?",
+    "Wie war das noch mal mit der Heizung?",
+    "Wie war das nochmal mit dem Termin?",
+    "Was hab ich dir vorhin gesagt?",
+    "Hatten wir nicht mal über den Urlaub gesprochen?",
+    "Was gab es vorgestern zu essen?",
+    "Kannst du dich erinnern, wie das Lied hieß?",
+    "Wann haben wir zuletzt die Filter gewechselt?",
+    "Weißt du noch, was wir für morgen ausgemacht haben?",
+    "Was haben wir für morgen geplant?",
+    "Was hab ich dir heute morgen gesagt?",
+    "Sag mal, hatten wir das schon besprochen?",
   ])("recognizes recall intent in %j", (message) => {
     expect(hasRecallIntent(message)).toBe(true);
   });
@@ -174,6 +190,20 @@ describe("active-memory escalation", () => {
     "Hier j'ai payé à crédit.",
     "Hier on a fait un audit.",
     "J'ai dit que mon cahier était plein.",
+    "Erinnere mich morgen an den Termin",
+    "Erinnere mich in zehn Minuten an den Kuchen",
+    "Merk dir, dass ich Kaffee mag",
+    "Mach das Licht im Wohnzimmer an",
+    "Was gibt es morgen zu essen?",
+    "Was läuft heute Abend im Fernsehen?",
+    "Was machen wir nächste Woche?",
+    "Rufe das Tool auf, es speichert die letzte Aufnahme als Stimm-Referenz.",
+    "Lässt deine Antwort nichts offen, schreib als letztes Wort NO_FOLLOWUP.",
+    "Deine Schlussantwort sagt nur noch, was neu ist: nichts wiederholen, was schon angesagt wurde.",
+    "Weißt du noch mehr darüber?",
+    "Erinnerst du dich morgen an den Termin?",
+    "Gestern habe ich Pizza gegessen",
+    "Der letzte Termin war schön",
   ])("does not mistake ordinary or future-facing %j for recall intent", (message) => {
     expect(hasRecallIntent(message)).toBe(false);
   });
