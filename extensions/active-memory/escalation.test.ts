@@ -107,6 +107,11 @@ describe("active-memory escalation", () => {
     "Was haben wir für morgen geplant?",
     "Was hab ich dir heute morgen gesagt?",
     "Sag mal, hatten wir das schon besprochen?",
+    "Was hat Petra gestern gesagt?",
+    "Was hat der Handwerker letzte Woche über die Heizung erzählt?",
+    "Wie hieß noch mal der Handwerker?",
+    "Was wollten wir letzte Woche kaufen?",
+    "Was solltest du mir vorhin ausrichten?",
   ])("recognizes recall intent in %j", (message) => {
     expect(hasRecallIntent(message)).toBe(true);
   });
@@ -204,6 +209,11 @@ describe("active-memory escalation", () => {
     "Erinnerst du dich morgen an den Termin?",
     "Gestern habe ich Pizza gegessen",
     "Der letzte Termin war schön",
+    "Was hat der Wetterbericht gesagt?",
+    "Was hat Petra gesagt?",
+    "Was wollten Sie bestellen?",
+    "Was wollten wir morgen kaufen?",
+    "Wie hieß der Film?",
   ])("does not mistake ordinary or future-facing %j for recall intent", (message) => {
     expect(hasRecallIntent(message)).toBe(false);
   });
