@@ -112,6 +112,12 @@ describe("active-memory escalation", () => {
     "Wie hieß noch mal der Handwerker?",
     "Was wollten wir letzte Woche kaufen?",
     "Was solltest du mir vorhin ausrichten?",
+    "Was haben wir für nächste Woche ausgemacht?",
+    "Worüber haben wir für übermorgen gesprochen?",
+    "Was hatten wir für heute Abend geplant?",
+    "Kannst du dich noch daran erinnern, was wir beschlossen haben?",
+    "Weisst du das noch?",
+    "Wie hiess das noch mal?",
   ])("recognizes recall intent in %j", (message) => {
     expect(hasRecallIntent(message)).toBe(true);
   });
@@ -214,6 +220,11 @@ describe("active-memory escalation", () => {
     "Was wollten Sie bestellen?",
     "Was wollten wir morgen kaufen?",
     "Wie hieß der Film?",
+    "Erinnere mich morgen an das, was wir gestern besprochen haben",
+    "Erinnere mich daran, dass wir letzte Woche den Termin ausgemacht haben",
+    "Erinnere mich in einer Stunde, was wir besprochen haben",
+    "Weißt du noch, ob wir übermorgen Zeit haben?",
+    "Weißt du noch, was nächste Woche ansteht?",
   ])("does not mistake ordinary or future-facing %j for recall intent", (message) => {
     expect(hasRecallIntent(message)).toBe(false);
   });
